@@ -130,13 +130,24 @@
     .empty { color: var(--muted); font-style: italic; }
     ol.howto { padding-left: 20px; margin: 0; }
     ol.howto li { margin-bottom: 6px; }
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button.mode {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      text-align: left; padding: 14px; border-width: 2px; background: var(--bg);
+    }
+    button.mode .icon { font-size: 1.6rem; line-height: 1; margin-bottom: 4px; }
+    button.mode .sub { font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+    button.mode[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); }
+    button.listening { background: var(--err-ink); border-color: var(--err-ink); color: var(--card); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.3; } }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
 <main>
   <h1>Recipe Capture</h1>
-  <p class="lede">Photograph a printed recipe, add your changes, and download a file that Paprika can import.</p>
+  <p class="lede">Photograph a printed recipe or dictate your own, and download a file that Paprika can import.</p>
 
   <details class="card" id="settings">
     <summary>Settings &amp; how to import into Paprika</summary>
@@ -156,6 +167,21 @@
     </ol>
   </details>
 
+  <section>
+    <h2>How do you want to add this recipe?</h2>
+    <div class="mode-grid">
+      <button type="button" class="mode" data-mode="photo" aria-pressed="true">
+        <span class="icon">📷</span><span>Photo + notes</span>
+        <span class="sub">Snap a printed recipe and add your changes</span>
+      </button>
+      <button type="button" class="mode" data-mode="dictate" aria-pressed="false">
+        <span class="icon">🎙️</span><span>Dictate</span>
+        <span class="sub">Say the ingredients and steps out loud</span>
+      </button>
+    </div>
+  </section>
+
+  <div id="photoMode">
   <section>
     <h2><span class="step">1</span> Photograph the recipe</h2>
     <p class="hint">Add one photo per page if the recipe spans more than one. Lay the page flat in good light.</p>
@@ -177,10 +203,33 @@
     </div>
     <div class="banner" id="readStatus" hidden></div>
   </section>
+  </div>
+
+  <div id="dictateMode" hidden>
+  <section>
+    <h2><span class="step">1</span> Dictate your recipe</h2>
+    <p class="hint">Talk naturally: say the name, the ingredients with amounts, then the steps, plus any tips. Claude will tidy it up and fix misheard words.</p>
+    <div class="buttons">
+      <button class="primary" id="micBtn" type="button">🎙️ Start dictating</button>
+      <button id="clearDictation" type="button">Clear</button>
+    </div>
+    <label for="dictation" style="margin-top:12px">What you said <span class="hint">(you can edit or type here too)</span></label>
+    <textarea id="dictation" class="tall" placeholder="e.g. This is my chili. You need two pounds of ground beef, one onion diced, two cans of kidney beans… First brown the beef with the onion, then…"></textarea>
+    <p class="hint" id="micHint">No luck with the button? Tap in the box and use the microphone on your keyboard instead.</p>
+  </section>
+
+  <section>
+    <h2><span class="step">2</span> Turn it into a recipe</h2>
+    <div class="buttons">
+      <button class="primary" id="organizeBtn" type="button">✨ Turn into recipe</button>
+    </div>
+    <div class="banner" id="dictateStatus" hidden></div>
+  </section>
+  </div>
 
   <section>
     <h2><span class="step">3</span> Review &amp; edit</h2>
-    <p class="hint">Claude fills these in from your photos. Check them against the page and fix anything it misread. You can also type a recipe in by hand.</p>
+    <p class="hint">Claude fills these in for you. Check them and fix anything it got wrong. You can also type a recipe in by hand.</p>
 
     <label for="name">Recipe name</label>
     <input type="text" id="name">
@@ -200,7 +249,7 @@
     <label for="directions">Directions <span class="hint">(blank line between steps)</span></label>
     <textarea id="directions" class="tall"></textarea>
 
-    <label for="recipeNotes">Notes from the original recipe <span class="hint">(tips, variations, handwritten margin notes)</span></label>
+    <label for="recipeNotes">Recipe notes <span class="hint">(tips, variations, stories, margin notes)</span></label>
     <textarea id="recipeNotes"></textarea>
 
     <label for="nutrition">Nutrition <span class="hint">(optional)</span></label>
@@ -234,7 +283,7 @@
     <label class="check"><input type="checkbox" id="favorite"> Add to Favorites</label>
 
     <label>Recipe photo in Paprika</label>
-    <p class="hint" style="margin:0">Uses a photo of the finished dish if you add one, otherwise the first page photo.</p>
+    <p class="hint" style="margin:0">Uses a photo of the finished dish if you add one. In photo mode, it otherwise uses the first page photo.</p>
     <div class="buttons">
       <label class="button" for="dishInput" style="margin:0">🍽️ Add finished-dish photo</label>
     </div>
