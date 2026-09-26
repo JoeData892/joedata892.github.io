@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipe Capture</title>
+  <meta name="description" content="Photograph a printed recipe, add your notes, and export a file Paprika can import.">
+  <style>
+    :root {
+      --bg: #faf7f2;
+      --card: #ffffff;
+      --ink: #2b2521;
+      --muted: #6f655c;
+      --line: #e4dcd1;
+      --accent: #b3401e;
+      --accent-ink: #ffffff;
+      --soft: #f3ece2;
+      --warn-bg: #fff4d6;
+      --warn-ink: #6b4d00;
+      --err-bg: #fde5e1;
+      --err-ink: #8a1f0c;
+      --ok-bg: #e3f3e6;
+      --ok-ink: #1d5e2b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1b1816;
+        --card: #25211e;
+        --ink: #eee7df;
+        --muted: #a99e93;
+        --line: #3a342f;
+        --accent: #e0714e;
+        --accent-ink: #1b1816;
+        --soft: #2e2925;
+        --warn-bg: #3b3013;
+        --warn-ink: #f3d68a;
+        --err-bg: #43211b;
+        --err-ink: #f7b3a4;
+        --ok-bg: #1f3524;
+        --ok-ink: #a6dcb1;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    main { max-width: 720px; margin: 0 auto; padding: 16px 16px 64px; }
+    h1 { font-size: 1.6rem; margin: 8px 0 4px; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    .step {
+      display: inline-grid; place-items: center;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent); color: var(--accent-ink);
+      font-size: 0.85rem; font-weight: 700;
+    }
+    .lede { color: var(--muted); margin: 0 0 20px; }
+    section, details.card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    details.card > summary { cursor: pointer; font-weight: 600; }
+    details.card[open] > summary { margin-bottom: 12px; }
+    label { display: block; font-weight: 600; font-size: 0.9rem; margin: 12px 0 4px; }
+    label:first-child { margin-top: 0; }
+    .hint { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+    input[type=text], input[type=password], select, textarea {
+      width: 100%;
+      font: inherit;
+      color: var(--ink);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    textarea.tall { min-height: 220px; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 12px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button, .button {
+      font: inherit; font-weight: 600;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    button.primary, .button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.link { background: none; border: none; padding: 0; color: var(--accent); font-weight: 600; }
+    .file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .thumb { position: relative; width: 96px; height: 96px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb button {
+      position: absolute; top: 4px; right: 4px;
+      width: 26px; height: 26px; padding: 0; justify-content: center;
+      border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; border: none; font-size: 16px; line-height: 1;
+    }
+    .thumb .tag {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); color: #fff; font-size: 0.7rem; text-align: center; padding: 2px 0;
+    }
+    .check { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; margin-top: 12px; }
+    .check input { width: 20px; height: 20px; }
+    .banner { border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 0.95rem; white-space: pre-wrap; }
+    .banner.warn { background: var(--warn-bg); color: var(--warn-ink); }
+    .banner.error { background: var(--err-bg); color: var(--err-ink); }
+    .banner.ok { background: var(--ok-bg); color: var(--ok-ink); }
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid currentColor; border-right-color: transparent;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .batch-list { list-style: none; padding: 0; margin: 0; }
+    .batch-list li {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--line);
+    }
+    .batch-list li:last-child { border-bottom: none; }
+    .empty { color: var(--muted); font-style: italic; }
+    ol.howto { padding-left: 20px; margin: 0; }
+    ol.howto li { margin-bottom: 6px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Recipe Capture</h1>
+  <p class="lede">Photograph a printed recipe, add your changes, and download a file that Paprika can import.</p>
+
+  <details class="card" id="settings">
+    <summary>Settings &amp; how to import into Paprika</summary>
+    <label for="apiKey">Anthropic API key <span class="hint">(saved only in this browser on this device)</span></label>
+    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+    <p class="hint">Get a key at console.anthropic.com → API Keys. Each recipe read costs a few cents.</p>
+
+    <label for="defaultSource">Default source <span class="hint">(pre-filled on each new recipe)</span></label>
+    <input type="text" id="defaultSource" placeholder="e.g. Grandma's church cookbook">
+
+    <label>Importing into Paprika</label>
+    <ol class="howto">
+      <li>Download the <strong>.yml</strong> file from this page (one recipe, or a batch of several).</li>
+      <li><strong>iPhone/iPad:</strong> the file saves to the Files app. In Paprika, open <em>Settings → Import</em>, choose <em>Paprika / YAML file</em> (or just share the file to Paprika from the Files app).</li>
+      <li><strong>Mac/Windows:</strong> in Paprika choose <em>File → Import</em> and select the .yml file.</li>
+      <li>Paprika syncs the new recipes to your other devices.</li>
+    </ol>
+  </details>
+
+  <section>
+    <h2><span class="step">1</span> Photograph the recipe</h2>
+    <p class="hint">Add one photo per page if the recipe spans more than one. Lay the page flat in good light.</p>
+    <div class="buttons">
+      <label class="button primary" for="cameraInput" style="margin:0">📷 Take photo</label>
+      <label class="button" for="libraryInput" style="margin:0">🖼️ Choose from photos</label>
+    </div>
+    <input class="file-input" type="file" id="cameraInput" accept="image/*" capture="environment">
+    <input class="file-input" type="file" id="libraryInput" accept="image/*" multiple>
+    <div class="thumbs" id="pageThumbs"></div>
+  </section>
+
+  <section>
+    <h2><span class="step">2</span> Your changes &amp; notes</h2>
+    <label for="myChanges">What did you do differently? <span class="hint">(saved in Paprika's Notes, exactly as you type it)</span></label>
+    <textarea id="myChanges" placeholder="e.g. Used half the sugar. Baked 40 min instead of 30. Added 1 tsp cinnamon — much better."></textarea>
+    <div class="buttons">
+      <button class="primary" id="readBtn" type="button">✨ Read recipe from photos</button>
+    </div>
+    <div class="banner" id="readStatus" hidden></div>
+  </section>
+
+  <section>
+    <h2><span class="step">3</span> Review &amp; edit</h2>
+    <p class="hint">Claude fills these in from your photos. Check them against the page and fix anything it misread. You can also type a recipe in by hand.</p>
+
+    <label for="name">Recipe name</label>
+    <input type="text" id="name">
+
+    <div class="row">
+      <div><label for="servings">Servings</label><input type="text" id="servings"></div>
+      <div><label for="prepTime">Prep time</label><input type="text" id="prepTime"></div>
+      <div><label for="cookTime">Cook time</label><input type="text" id="cookTime"></div>
+    </div>
+
+    <label for="source">Source</label>
+    <input type="text" id="source" placeholder="e.g. Grandma's church cookbook, p. 42">
+
+    <label for="ingredients">Ingredients <span class="hint">(one per line)</span></label>
+    <textarea id="ingredients" class="tall"></textarea>
+
+    <label for="directions">Directions <span class="hint">(blank line between steps)</span></label>
+    <textarea id="directions" class="tall"></textarea>
+
+    <label for="recipeNotes">Notes from the original recipe <span class="hint">(tips, variations, handwritten margin notes)</span></label>
+    <textarea id="recipeNotes"></textarea>
+
+    <label for="nutrition">Nutrition <span class="hint">(optional)</span></label>
+    <input type="text" id="nutrition">
+
+    <label for="categories">Categories <span class="hint">(comma-separated, e.g. Dessert, Holiday)</span></label>
+    <input type="text" id="categories">
+
+    <div class="row">
+      <div>
+        <label for="rating">Rating</label>
+        <select id="rating">
+          <option value="0">No rating</option>
+          <option value="1">★</option>
+          <option value="2">★★</option>
+          <option value="3">★★★</option>
+          <option value="4">★★★★</option>
+          <option value="5">★★★★★</option>
+        </select>
+      </div>
+      <div>
+        <label for="difficulty">Difficulty</label>
+        <select id="difficulty">
+          <option value="">—</option>
+          <option>Easy</option>
+          <option>Medium</option>
+          <option>Hard</option>
+        </select>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="favorite"> Add to Favorites</label>
+
+    <label>Recipe photo in Paprika</label>
+    <p class="hint" style="margin:0">Uses a photo of the finished dish if you add one, otherwise the first page photo.</p>
+    <div class="buttons">
+      <label class="button" for="dishInput" style="margin:0">🍽️ Add finished-dish photo</label>
+    </div>
+    <input class="file-input" type="file" id="dishInput" accept="image/*">
+    <div class="thumbs" id="dishThumb"></div>
+  </section>
+
+  <section>
+    <h2><span class="step">4</span> Export to Paprika</h2>
+    <div class="buttons">
+      <button class="primary" id="downloadOne" type="button">⬇️ Download this recipe</button>
+      <button id="addToBatch" type="button">➕ Add to batch</button>
+      <button id="newRecipe" type="button">↺ Start new recipe</button>
+    </div>
+    <div class="banner" id="exportStatus" hidden></div>
+
+    <label style="margin-top:20px">Batch <span class="hint">(capture several recipes, then import them all with one file)</span></label>
+    <ul class="batch-list" id="batchList"></ul>
+    <div class="buttons">
+      <button class="primary" id="downloadBatch" type="button">⬇️ Download batch</button>
+      <button id="clearBatch" type="button">Clear batch</button>
+    </div>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
