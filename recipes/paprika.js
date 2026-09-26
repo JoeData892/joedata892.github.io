@@ -72,9 +72,10 @@ export function toPaprikaYaml(recipes) {
 }
 
 // Combines the cook's own changes with notes printed/handwritten on the page.
+// Headings are only added when both kinds of notes are present.
 export function composeNotes(myChanges, recipeNotes) {
-  const parts = [];
-  if (clean(myChanges)) parts.push("MY CHANGES:\n" + clean(myChanges));
+  if (!clean(myChanges)) return clean(recipeNotes);
+  const parts = ["MY CHANGES:\n" + clean(myChanges)];
   if (clean(recipeNotes)) parts.push("FROM THE ORIGINAL RECIPE:\n" + clean(recipeNotes));
   return parts.join("\n\n");
 }
